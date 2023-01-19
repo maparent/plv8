@@ -916,7 +916,7 @@ CallFunction(PG_FUNCTION_ARGS, plv8_exec_env *xenv,
 	Local<Object> recv = Local<Object>::New(xenv->isolate, xenv->recv);
 	Local<Function>		fn =
 		Local<Function>::Cast(recv->GetInternalField(0));
-	
+
 	Local<v8::Value> result =
 		DoCall(context, fn, recv, nargs, args, nonatomic);
 
@@ -1792,7 +1792,7 @@ GetPlv8Context() {
 	}
 	if (!my_context)
 	{
-		my_context = (plv8_context *) MemoryContextAllocZero(TopMemoryContext,
+		my_context = (plv8_context *) MemoryContextAlloc(TopMemoryContext,
 														 sizeof(plv8_context));
 		my_context->is_dead = false;
 		my_context->interrupted = false;

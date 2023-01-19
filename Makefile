@@ -17,14 +17,15 @@ PLV8_DATA = plv8.control plv8--$(PLV8_VERSION).sql $(wildcard upgrade/*.sql)
 ifeq ($(OS),Windows_NT)
 	# noop for now
 else
-	SHLIB_LINK += -Ldeps/v8-cmake/build
 	UNAME_S := $(shell uname -s)
 	ifeq ($(UNAME_S),Darwin)
+		DYLIB_EXT = dylib
 		CCFLAGS += -stdlib=libc++
 		SHLIB_LINK += -stdlib=libc++ -std=c++17 -lc++
 		NUMPROC := $(shell sysctl hw.ncpu | awk '{print $$2}')
 	endif
 	ifeq ($(UNAME_S),Linux)
+		DYLIB_EXT = so
 		SHLIB_LINK += -lrt -std=c++17
 		NUMPROC := $(shell grep -c ^processor /proc/cpuinfo)
 	endif
@@ -34,9 +35,29 @@ ifeq ($(NUMPROC),0)
 	NUMPROC = 1
 endif
 
-SHLIB_LINK += -Ldeps/v8-cmake/build -g
+SHLIB_LINK += -g
 
 all: v8 $(OBJS)
+
+SYSTEM_V8 ?=
+
+ifeq ($(SYSTEM_V8),)
+AUTOV8_DIR = build/v8
+AUTOV8_OUT = build/v8/out.gn/obj
+V8_LIBNAME = v8_monolith
+V8_MONOLITH = true
+SHLIB_LINK += -Ldeps/v8-cmake/build
+v8: deps/v8-cmake/build/libv8_libbase.a
+else
+AUTOV8_DIR = $(SYSTEM_V8)
+AUTOV8_OUT = $(SYSTEM_V8)/lib
+V8_LIBNAME = v8
+V8_MONOLITH = false
+v8: $(SYSTEM_V8)/lib/lib$(V8_LIBNAME).$(DYLIB_EXT)
+endif
+AUTOV8_STATIC_LIBS = -lv8_libplatform -lv8_libbase
+
+SHLIB_LINK += -L$(AUTOV8_OUT) $(AUTOV8_STATIC_LIBS)
 
 # For some reason, this solves parallel make dependency.
 plv8_config.h plv8.so: v8
@@ -45,12 +66,16 @@ deps/v8-cmake/build/libv8_libbase.a:
 	@git submodule update --init --recursive
 	@cd deps/v8-cmake && mkdir -p build && cd build && cmake -Denable-fPIC=ON -DCMAKE_BUILD_TYPE=Release ../ && make -j $(NUMPROC)
 
-v8: deps/v8-cmake/build/libv8_libbase.a
-
 # enable direct jsonb conversion by default
 CCFLAGS += -DJSONB_DIRECT_CONVERSION
 
+ifeq ($(SYSTEM_V8),)
 CCFLAGS += -Ideps/v8-cmake/v8/include -std=c++17
+SHLIB_LINK += -lv8_base_without_compiler -lv8_compiler -lv8_snapshot -lv8_inspector -lv8_libplatform -lv8_base_without_compiler -lv8_libsampler -lv8_torque_generated -lv8_libbase
+else
+CCFLAGS += -I$(SYSTEM_V8)/include -std=c++17 -DV8_ENABLE_SANDBOX -DV8_COMPRESS_POINTERS=1
+SHLIB_LINK += -lv8
+endif
 
 ifdef EXECUTION_TIMEOUT
 	CCFLAGS += -DEXECUTION_TIMEOUT
@@ -72,7 +97,6 @@ else
 	REGRESS += bigint_graceful
 endif
 
-SHLIB_LINK += -lv8_base_without_compiler -lv8_compiler -lv8_snapshot -lv8_inspector -lv8_libplatform -lv8_base_without_compiler -lv8_libsampler -lv8_torque_generated -lv8_libbase
 
 OPTFLAGS = -std=c++17 -fno-rtti -O2
 CCFLAGS += -Wall $(OPTFLAGS)
