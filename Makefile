@@ -70,7 +70,7 @@ endif
 # enable direct jsonb conversion by default
 CCFLAGS += -DJSONB_DIRECT_CONVERSION
 
-CCFLAGS += -DV8_COMPRESS_POINTERS=1 -DV8_31BIT_SMIS_ON_64BIT_ARCH=1
+CCFLAGS += -DV8_COMPRESS_POINTERS=1 -DV8_31BIT_SMIS_ON_64BIT_ARCH=1 -DV8_ENABLE_SANDBOX
 
 CCFLAGS += -I$(AUTOV8_DIR)/include -I$(AUTOV8_DIR)
 
@@ -86,7 +86,7 @@ endif
 # We're gonna build static link.  Rip it out after include Makefile
 SHLIB_LINK := $(filter-out -lv8, $(SHLIB_LINK))
 
-CCFLAGS += -std=c++14 -Ibuild/v8/include
+CCFLAGS += -std=c++17 -I$(AUTOV8_DIR)/include
 
 ifeq ($(OS),Windows_NT)
 	# noop for now
@@ -95,10 +95,10 @@ else
 	UNAME_S := $(shell uname -s)
 	ifeq ($(UNAME_S),Darwin)
 		CCFLAGS += -stdlib=libc++
-		SHLIB_LINK += -stdlib=libc++ -std=c++14
+		SHLIB_LINK += -stdlib=libc++ -std=c++17
 	endif
 	ifeq ($(UNAME_S),Linux)
-		SHLIB_LINK += -lrt -std=c++14 
+		SHLIB_LINK += -lrt -std=c++17
 	endif
 endif
 
@@ -131,7 +131,7 @@ else
 SHLIB_LINK += -lv8_libplatform -lv8_libbase -lv8_monolith
 endif
 
-OPTFLAGS = -std=c++14 -fno-rtti -O2
+OPTFLAGS = -std=c++17 -fno-rtti -O2
 
 CCFLAGS += -Wall $(OPTFLAGS)
 

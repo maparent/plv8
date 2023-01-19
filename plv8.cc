@@ -220,7 +220,7 @@ void DispatchDebugMessages() {
 }
 #endif  // ENABLE_DEBUGGER_SUPPORT
 
-void OOMErrorHandler(const char* location, bool is_heap_oom) {
+void OOMErrorHandler(const char* location, const v8::OOMDetails &) {
 	Isolate *isolate = Isolate::GetCurrent();
 	isolate->TerminateExecution();
 	// set it to kill the user context and isolate
@@ -909,7 +909,7 @@ CallFunction(PG_FUNCTION_ARGS, plv8_exec_env *xenv,
 	Local<Object> recv = Local<Object>::New(xenv->isolate, xenv->recv);
 	Local<Function>		fn =
 		Local<Function>::Cast(recv->GetInternalField(0));
-	
+
 	Local<v8::Value> result =
 		DoCall(context, fn, recv, nargs, args, nonatomic);
 
@@ -1523,7 +1523,7 @@ CompileDialect(const char *src, Dialect dialect, plv8_context *global_context)
 	if (ctx->Global()->Get(ctx, key).ToLocalChecked()->IsUndefined())
 	{
 		HandleScope		handle_scope(isolate);
-		v8::ScriptOrigin origin(key);
+		v8::ScriptOrigin origin(isolate, key);
 		v8::Local<v8::Script> script;
 		if (!Script::Compile(isolate->GetCurrentContext(), ToString(dialect_binary_data), &origin).ToLocal(&script))
 			throw js_error(try_catch);
@@ -1689,7 +1689,7 @@ CompileFunction(
 	Local<Context> context = Local<Context>::New(isolate, global_context->context);
 	Context::Scope	context_scope(context);
 	TryCatch		try_catch(isolate);
-	v8::ScriptOrigin origin(name);
+	v8::ScriptOrigin origin(isolate, name);
 
 	// set up the signal handlers
 	int_handler = (void *) signal(SIGINT, signal_handler);
@@ -1903,7 +1903,7 @@ GetPlv8Context() {
 	}
 	if (!my_context)
 	{
-		my_context = (plv8_context *) MemoryContextAllocZero(TopMemoryContext,
+		my_context = (plv8_context *) MemoryContextAlloc(TopMemoryContext,
 														 sizeof(plv8_context));
 		my_context->is_dead = false;
 		my_context->interrupted = false;
