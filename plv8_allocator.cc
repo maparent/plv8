@@ -48,7 +48,7 @@ void* ArrayAllocator::Allocate(size_t length) {
 void* ArrayAllocator::AllocateUninitialized(size_t length) {
 	if (check(length)) {
 		allocated += length;
-		return std::malloc(length);
+		return this->allocator->AllocateUninitialized(length);
 	} else {
 		return nullptr;
 	}
